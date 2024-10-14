@@ -92,6 +92,22 @@ def register_user():
 
     return jsonify({'message': 'User registered successfully.'}), 201
 
+@app.route('/dashboard/<int:user_id>', methods=['GET'])
+def dashboard(user_id):
+    """Dashboard endpoint to retrieve user profile information."""
+    user_profile = UserProfile.query.filter_by(user_id=user_id).first()
+
+    if user_profile:
+        return jsonify({
+            'user_id': user_profile.user_id,
+            'calorie_goal': user_profile.calorie_goal,
+            'protein_goal': user_profile.protein_goal,
+            'carbohydrate_goal': user_profile.carbohydrate_goal,
+            'fat_goal': user_profile.fat_goal,
+            'food_log': user_profile.food_log
+        }), 200
+
+    return jsonify({'message': 'User profile not found.'}), 404
 
 if __name__ == '__main__':
     with app.app_context():

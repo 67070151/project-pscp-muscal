@@ -12,7 +12,7 @@ class LoginInfo(db.Model):
     __tablename__ = 'login_info'
     user_id = db.Column(db.Integer, primary_key=True)
     username = db.Column(db.String(50), unique=True, nullable=False)
-    password = db.Column(db.String(128), nullable=False)
+    password = db.Column(db.String(255), nullable=False)
 
 @app.route('/login', methods=['POST'])
 def login():
@@ -30,5 +30,38 @@ def login():
     else:
         return jsonify({'message': 'User not found'}), 404
 
+@app.route('/register', methods=['POST'])
+def add_user_data():
+    data = request.json
+    username = data.get('username')
+    password = data.get('password')
+
+    # Validate input
+    if not username or not password:
+        return jsonify({'error': 'Username and password are required.'}), 400
+
+    # Hash the password before storing it
+    hashed_password = generate_password_hash(password)
+    print(f"Registering user: {username}, Hashed password: {hashed_password}")
+
+    user_info = LoginInfo(
+        username=username,
+        password=hashed_password
+    )
+
+    try:
+        db.session.add(user_info)
+        db.session.commit()
+    except IntegrityError:
+        db.session.rollback()
+        return jsonify({'error': 'Username already exists.'}), 409
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'error': str(e)}), 500
+
+    return jsonify({'message': 'User registered successfully.'}), 201
+
 if __name__ == '__main__':
+    with app.app_context():
+        db.create_all()
     app.run(debug=True)

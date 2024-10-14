@@ -79,6 +79,10 @@ def register_user():
     try:
         db.session.add(new_user)
         db.session.commit()
+
+        new_user_profile = UserProfile(user_id=new_user.user_id)
+        db.session.add(new_user_profile)
+        db.session.commit()
     except IntegrityError:
         db.session.rollback()
         return jsonify({'error': 'Username already exists.'}), 409
@@ -87,6 +91,7 @@ def register_user():
         return jsonify({'error': str(error)}), 500
 
     return jsonify({'message': 'User registered successfully.'}), 201
+
 
 if __name__ == '__main__':
     with app.app_context():

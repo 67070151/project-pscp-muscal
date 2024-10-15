@@ -147,6 +147,33 @@ def dashboard():
 
     return jsonify({'message': 'User profile not found.'}), 404
 
+@app.route('/view_all_food', methods=['GET'])
+def view_all_food():
+    """Endpoint to view all food items."""
+    user_id = session.get('user_id')
+
+    if not user_id:
+        return jsonify({'message': 'User not logged in.'}), 401
+
+    food_items = FoodItem.query.all()
+    if not food_items:
+        return jsonify({'message': 'No food items found.'}), 404
+
+    food_list = []
+    for item in food_items:
+        food_list.append({
+            'food_id': item.food_id,
+            'food_name': item.food_name,
+            'serving_size': item.serving_size,
+            'servings_per_container': item.servings_per_container,
+            'calories_per_serving': item.calories_per_serving,
+            'carbohydrates_per_serving': item.carbohydrates_per_serving,
+            'protein_per_serving': item.protein_per_serving,
+            'fat_per_serving': item.fat_per_serving
+        })
+
+    return jsonify({'food_items': food_list}), 200
+
 @app.route('/add_food', methods=['POST'])
 def add_food():
     """Endpoint to add a food item to the database."""
@@ -318,8 +345,6 @@ def delete_food_entry():
     except Exception as e:
         db.session.rollback()
         return jsonify({'error': str(e)}), 500
-
-
 
 if __name__ == '__main__':
     with app.app_context():

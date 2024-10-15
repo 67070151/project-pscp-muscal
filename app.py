@@ -8,8 +8,7 @@ import os  # Import for generating a random secret key
 app = Flask(__name__)
 
 # Set a secret key for sessions
-app.config['SECRET_KEY'] = os.urandom(24)  # Generates a random 24-byte secret key
-
+app.config['SECRET_KEY'] = os.urandom(24)
 app.config['SQLALCHEMY_DATABASE_URI'] = 'mysql+pymysql://root@localhost/muscal'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 db = SQLAlchemy(app)
@@ -22,7 +21,6 @@ class UserLogin(db.Model):
     username = db.Column(db.String(50), unique=True, nullable=False)
     password_hash = db.Column(db.String(255), nullable=False)
 
-    # Establish relationship with UserProfile
     user_profile = db.relationship('UserProfile', backref='user_login', uselist=False)
 
 class UserProfile(db.Model):
@@ -49,6 +47,13 @@ class FoodItem(db.Model):
     protein_per_serving = db.Column(db.Integer, nullable=False)
     fat_per_serving = db.Column(db.Integer, nullable=False)
 
+def validate_user_input(data, required_fields):
+    """Validate required user input fields."""
+    for field in required_fields:
+        if field not in data or data[field] is None:
+            return False, f"{field.replace('_', ' ').title()} is required."
+    return True, None
+
 @app.route('/login', methods=['POST'])
 def login():
     """Login endpoint for user authentication."""
@@ -58,13 +63,11 @@ def login():
 
     user = UserLogin.query.filter_by(username=username).first()
 
-    if user:
-        if check_password_hash(user.password_hash, password):
-            session['user_id'] = user.user_id  # Set the user ID in session
-            return jsonify({'message': 'Login successful!'}), 200
-        return jsonify({'message': 'Invalid password'}), 401
+    if user and check_password_hash(user.password_hash, password):
+        session['user_id'] = user.user_id
+        return jsonify({'message': 'Login successful!'}), 200
 
-    return jsonify({'message': 'User not found'}), 404
+    return jsonify({'message': 'Invalid username or password.'}), 401
 
 @app.route('/register', methods=['POST'])
 def register_user():
@@ -74,21 +77,22 @@ def register_user():
     password = request_data.get('password')
 
     # Validate input
-    if not username or not password:
-        return jsonify({'error': 'Username and password are required.'}), 400
+    valid, error_message = validate_user_input(request_data, ['username', 'password'])
+    if not valid:
+        return jsonify({'error': error_message}), 400
 
     # Hash the password before storing it
     hashed_password = generate_password_hash(password)
-
     new_user = UserLogin(username=username, password_hash=hashed_password)
 
     try:
         db.session.add(new_user)
         db.session.commit()
-
+        
         new_user_profile = UserProfile(user_id=new_user.user_id)
         db.session.add(new_user_profile)
         db.session.commit()
+
     except IntegrityError:
         db.session.rollback()
         return jsonify({'error': 'Username already exists.'}), 409
@@ -101,7 +105,7 @@ def register_user():
 @app.route('/dashboard', methods=['GET'])
 def dashboard():
     """Dashboard endpoint to retrieve user profile information."""
-    user_id = session.get('user_id')  # Retrieve the user_id from the session
+    user_id = session.get('user_id')
 
     if not user_id:
         return jsonify({'message': 'User not logged in.'}), 401
@@ -133,16 +137,18 @@ def add_food():
     serving_size = request_data.get('serving_size')
     servings_per_container = request_data.get('servings_per_container')
     calories_per_serving = request_data.get('calories_per_serving')
-    
-    # Get optional fields and set default to 0 if not provided
+
+    # Get optional fields, allowing for 0 inputs
     carbohydrates_per_serving = request_data.get('carbohydrates_per_serving', 0)
     protein_per_serving = request_data.get('protein_per_serving', 0)
     fat_per_serving = request_data.get('fat_per_serving', 0)
 
-    if not all([food_name, serving_size, servings_per_container, calories_per_serving]):
-        return jsonify({'error': 'Food name, serving size, servings per container, and calories per serving are required.'}), 400
+    # Validate required fields
+    valid, error_message = validate_user_input(request_data, ['food_name', 'serving_size', 'servings_per_container', 'calories_per_serving'])
+    if not valid:
+        return jsonify({'error': error_message}), 400
 
-    # Convert the optional fields to integers (ensure they are numerical)
+    # Convert to integers, ensuring they are numerical
     try:
         servings_per_container = int(servings_per_container)
         calories_per_serving = int(calories_per_serving)
@@ -150,7 +156,7 @@ def add_food():
         protein_per_serving = int(protein_per_serving)
         fat_per_serving = int(fat_per_serving)
     except ValueError:
-        return jsonify({'error': 'Servings per container, calories per serving, carbohydrates, protein, and fat must be numbers.'}), 400
+        return jsonify({'error': 'All numeric fields must be valid numbers.'}), 400
 
     new_food = FoodItem(
         food_name=food_name,
@@ -165,7 +171,6 @@ def add_food():
     try:
         db.session.add(new_food)
         db.session.commit()
-
         return jsonify({'message': 'Food item added successfully.'}), 201
     except Exception as e:
         db.session.rollback()

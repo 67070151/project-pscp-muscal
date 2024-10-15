@@ -199,6 +199,38 @@ def add_food():
         db.session.rollback()
         return jsonify({'error': str(e)}), 500
 
+@app.route('/delete_food', methods=['DELETE'])
+def delete_food():
+    """Endpoint to delete a food item, ensuring related food log entries are also deleted."""
+    food_id = request.json.get('food_id')
+
+    # Validate that the food_id is provided
+    if not food_id:
+        return jsonify({'error': 'food_id is required.'}), 400
+
+    # Fetch the food item
+    food_item = FoodItem.query.filter_by(food_id=food_id).first()
+
+    if not food_item:
+        return jsonify({'error': 'Food item not found.'}), 404
+
+    try:
+        # Begin transaction
+        # Delete all related food log entries
+        FoodLogEntry.query.filter_by(food_id=food_id).delete()
+
+        # Now delete the food item
+        db.session.delete(food_item)
+
+        # Commit both deletions
+        db.session.commit()
+        return jsonify({'message': 'Food item and related log entries deleted successfully.'}), 200
+
+    except Exception as e:
+        # Rollback in case of error
+        db.session.rollback()
+        return jsonify({'error': str(e)}), 500
+
 @app.route('/log_food', methods=['POST'])
 def log_food():
     """Endpoint to log food entries for a specific day."""
@@ -286,6 +318,7 @@ def delete_food_entry():
     except Exception as e:
         db.session.rollback()
         return jsonify({'error': str(e)}), 500
+
 
 
 if __name__ == '__main__':

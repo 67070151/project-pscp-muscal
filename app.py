@@ -3,6 +3,7 @@ from flask_sqlalchemy import SQLAlchemy
 from sqlalchemy.exc import IntegrityError
 from werkzeug.security import generate_password_hash, check_password_hash
 import os  # Import for generating a random secret key
+from datetime import date
 
 # Initialize Flask application and SQLAlchemy
 app = Flask(__name__)
@@ -32,7 +33,8 @@ class UserProfile(db.Model):
     protein_goal = db.Column(db.Integer, default=25, nullable=False)
     carbohydrate_goal = db.Column(db.Integer, default=50, nullable=False)
     fat_goal = db.Column(db.Integer, default=25, nullable=False)
-    food_log = db.Column(db.Text, nullable=True)
+
+    daily_food_logs = db.relationship('DailyFoodLog', backref='user_profile', lazy=True)
 
 class FoodItem(db.Model):
     """Model for storing food information."""
@@ -46,6 +48,23 @@ class FoodItem(db.Model):
     carbohydrates_per_serving = db.Column(db.Integer, nullable=False)
     protein_per_serving = db.Column(db.Integer, nullable=False)
     fat_per_serving = db.Column(db.Integer, nullable=False)
+
+class DailyFoodLog(db.Model):
+    """Model for storing daily food logs."""
+    __tablename__ = 'daily_food_logs'
+    log_id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('user_info.user_id'), nullable=False)
+    log_date = db.Column(db.Date, default=date.today, nullable=False)
+
+    food_entries = db.relationship('FoodLogEntry', backref='daily_food_log', lazy=True)
+
+class FoodLogEntry(db.Model):
+    """Model for storing entries in a daily food log."""
+    __tablename__ = 'food_log_entries'
+    entry_id = db.Column(db.Integer, primary_key=True)
+    log_id = db.Column(db.Integer, db.ForeignKey('daily_food_logs.log_id'), nullable=False)
+    food_id = db.Column(db.Integer, db.ForeignKey('foods.food_id'), nullable=False)
+    quantity = db.Column(db.Integer, nullable=False)
 
 def validate_user_input(data, required_fields):
     """Validate required user input fields."""
@@ -118,8 +137,7 @@ def dashboard():
             'calorie_goal': user_profile.calorie_goal,
             'protein_goal': user_profile.protein_goal,
             'carbohydrate_goal': user_profile.carbohydrate_goal,
-            'fat_goal': user_profile.fat_goal,
-            'food_log': user_profile.food_log
+            'fat_goal': user_profile.fat_goal
         }), 200
 
     return jsonify({'message': 'User profile not found.'}), 404
@@ -175,6 +193,74 @@ def add_food():
     except Exception as e:
         db.session.rollback()
         return jsonify({'error': str(e)}), 500
+
+@app.route('/log_food', methods=['POST'])
+def log_food():
+    """Endpoint to log food entries for a specific day."""
+    user_id = session.get('user_id')
+
+    if not user_id:
+        return jsonify({'message': 'User not logged in.'}), 401
+
+    request_data = request.json
+    log_date = request_data.get('log_date', date.today())
+    food_id = request_data.get('food_id')
+    quantity = request_data.get('quantity')
+
+    # Validate input
+    if not food_id or not quantity:
+        return jsonify({'error': 'food_id and quantity are required.'}), 400
+
+    # Find or create a daily food log
+    daily_log = DailyFoodLog.query.filter_by(user_id=user_id, log_date=log_date).first()
+    if not daily_log:
+        daily_log = DailyFoodLog(user_id=user_id, log_date=log_date)
+        db.session.add(daily_log)
+        db.session.commit()
+
+    # Log the food entry
+    food_item = FoodItem.query.get(food_id)
+    if not food_item:
+        return jsonify({'error': 'Food item not found.'}), 404
+
+    food_log_entry = FoodLogEntry(log_id=daily_log.log_id, food_id=food_item.food_id, quantity=quantity)
+    db.session.add(food_log_entry)
+
+    try:
+        db.session.commit()
+        return jsonify({'message': 'Food logged successfully.'}), 201
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/view_log', methods=['GET'])
+def view_log():
+    """Endpoint to view food log for a specific day."""
+    user_id = session.get('user_id')
+
+    if not user_id:
+        return jsonify({'message': 'User not logged in.'}), 401
+
+    log_date = request.args.get('log_date', date.today())
+
+    daily_log = DailyFoodLog.query.filter_by(user_id=user_id, log_date=log_date).first()
+
+    if not daily_log:
+        return jsonify({'message': 'No log found for this date.'}), 404
+
+    entries = []
+    for entry in daily_log.food_entries:
+        food_item = FoodItem.query.get(entry.food_id)
+        entries.append({
+            'food_name': food_item.food_name,
+            'quantity': entry.quantity,
+            'calories': food_item.calories_per_serving * entry.quantity
+        })
+
+    return jsonify({
+        'date': log_date,
+        'entries': entries
+    }), 200
 
 if __name__ == '__main__':
     with app.app_context():

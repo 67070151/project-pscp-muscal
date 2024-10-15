@@ -1,10 +1,15 @@
-from flask import Flask, request, jsonify
+from flask import Flask, request, jsonify, session
 from flask_sqlalchemy import SQLAlchemy
 from sqlalchemy.exc import IntegrityError
 from werkzeug.security import generate_password_hash, check_password_hash
+import os  # Import for generating a random secret key
 
 # Initialize Flask application and SQLAlchemy
 app = Flask(__name__)
+
+# Set a secret key for sessions
+app.config['SECRET_KEY'] = os.urandom(24)  # Generates a random 24-byte secret key
+
 app.config['SQLALCHEMY_DATABASE_URI'] = 'mysql+pymysql://root@localhost/muscal'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 db = SQLAlchemy(app)
@@ -55,6 +60,7 @@ def login():
 
     if user:
         if check_password_hash(user.password_hash, password):
+            session['user_id'] = user.user_id  # Set the user ID in session
             return jsonify({'message': 'Login successful!'}), 200
         return jsonify({'message': 'Invalid password'}), 401
 
@@ -92,9 +98,14 @@ def register_user():
 
     return jsonify({'message': 'User registered successfully.'}), 201
 
-@app.route('/dashboard/<int:user_id>', methods=['GET'])
-def dashboard(user_id):
+@app.route('/dashboard', methods=['GET'])
+def dashboard():
     """Dashboard endpoint to retrieve user profile information."""
+    user_id = session.get('user_id')  # Retrieve the user_id from the session
+
+    if not user_id:
+        return jsonify({'message': 'User not logged in.'}), 401
+
     user_profile = UserProfile.query.filter_by(user_id=user_id).first()
 
     if user_profile:
@@ -111,5 +122,5 @@ def dashboard(user_id):
 
 if __name__ == '__main__':
     with app.app_context():
-        db.create_all()  # Create tables if they don't exist
+        db.create_all()
     app.run(debug=True)

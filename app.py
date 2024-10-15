@@ -120,6 +120,57 @@ def dashboard():
 
     return jsonify({'message': 'User profile not found.'}), 404
 
+@app.route('/add_food', methods=['POST'])
+def add_food():
+    """Endpoint to add a food item to the database."""
+    user_id = session.get('user_id')
+
+    if not user_id:
+        return jsonify({'message': 'User not logged in.'}), 401
+
+    request_data = request.json
+    food_name = request_data.get('food_name')
+    serving_size = request_data.get('serving_size')
+    servings_per_container = request_data.get('servings_per_container')
+    calories_per_serving = request_data.get('calories_per_serving')
+    
+    # Get optional fields and set default to 0 if not provided
+    carbohydrates_per_serving = request_data.get('carbohydrates_per_serving', 0)
+    protein_per_serving = request_data.get('protein_per_serving', 0)
+    fat_per_serving = request_data.get('fat_per_serving', 0)
+
+    if not all([food_name, serving_size, servings_per_container, calories_per_serving]):
+        return jsonify({'error': 'Food name, serving size, servings per container, and calories per serving are required.'}), 400
+
+    # Convert the optional fields to integers (ensure they are numerical)
+    try:
+        servings_per_container = int(servings_per_container)
+        calories_per_serving = int(calories_per_serving)
+        carbohydrates_per_serving = int(carbohydrates_per_serving)
+        protein_per_serving = int(protein_per_serving)
+        fat_per_serving = int(fat_per_serving)
+    except ValueError:
+        return jsonify({'error': 'Servings per container, calories per serving, carbohydrates, protein, and fat must be numbers.'}), 400
+
+    new_food = FoodItem(
+        food_name=food_name,
+        serving_size=serving_size,
+        servings_per_container=servings_per_container,
+        calories_per_serving=calories_per_serving,
+        carbohydrates_per_serving=carbohydrates_per_serving,
+        protein_per_serving=protein_per_serving,
+        fat_per_serving=fat_per_serving
+    )
+
+    try:
+        db.session.add(new_food)
+        db.session.commit()
+
+        return jsonify({'message': 'Food item added successfully.'}), 201
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'error': str(e)}), 500
+
 if __name__ == '__main__':
     with app.app_context():
         db.create_all()

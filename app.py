@@ -121,6 +121,11 @@ def register_user():
 
     return jsonify({'message': 'User registered successfully.'}), 201
 
+@app.route('/logout', methods=['POST'])
+def logout():
+    session.pop('user_id', None)
+    return jsonify({'message': 'Logged out successfully.'}), 200
+
 @app.route('/dashboard', methods=['GET'])
 def dashboard():
     """Dashboard endpoint to retrieve user profile information."""

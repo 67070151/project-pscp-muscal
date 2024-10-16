@@ -56,6 +56,12 @@ class DailyFoodLog(db.Model):
     user_id = db.Column(db.Integer, db.ForeignKey('user_info.user_id'), nullable=False)
     log_date = db.Column(db.Date, default=date.today, nullable=False)
 
+    # Track total nutrition for the day
+    total_calories = db.Column(db.Integer, default=0, nullable=False)
+    total_protein = db.Column(db.Integer, default=0, nullable=False)
+    total_carbohydrates = db.Column(db.Integer, default=0, nullable=False)
+    total_fat = db.Column(db.Integer, default=0, nullable=False)
+
     food_entries = db.relationship('FoodLogEntry', backref='daily_food_log', lazy=True)
 
 class FoodLogEntry(db.Model):
@@ -303,14 +309,14 @@ def delete_food():
 
 @app.route('/log_food', methods=['POST'])
 def log_food():
-    """Endpoint to log food entries for a specific day."""
+    """Endpoint to log food entries for a specific day and update daily totals."""
     user_id = session.get('user_id')
 
     if not user_id:
         return jsonify({'message': 'User not logged in.'}), 401
 
     request_data = request.json
-    log_date = request_data.get('log_date', date.today())
+    log_date = request_data.get('log_date', date.today())  # Default to today if no date provided
     food_id = request_data.get('food_id')
     quantity = request_data.get('quantity')
 
@@ -325,47 +331,62 @@ def log_food():
         db.session.add(daily_log)
         db.session.commit()
 
-    # Log the food entry
+    # Fetch the food item details
     food_item = FoodItem.query.get(food_id)
     if not food_item:
         return jsonify({'error': 'Food item not found.'}), 404
 
+    # Log the food entry
     food_log_entry = FoodLogEntry(log_id=daily_log.log_id, food_id=food_item.food_id, quantity=quantity)
     db.session.add(food_log_entry)
 
+    # Update daily totals
+    daily_log.total_calories += food_item.calories_per_serving * quantity
+    daily_log.total_protein += food_item.protein_per_serving * quantity
+    daily_log.total_carbohydrates += food_item.carbohydrates_per_serving * quantity
+    daily_log.total_fat += food_item.fat_per_serving * quantity
+
     try:
         db.session.commit()
-        return jsonify({'message': 'Food logged successfully.'}), 201
+        return jsonify({'message': 'Food logged successfully and totals updated.'}), 201
     except Exception as e:
         db.session.rollback()
         return jsonify({'error': str(e)}), 500
 
 @app.route('/view_log', methods=['GET'])
 def view_log():
-    """Endpoint to view food log for a specific day."""
+    """Endpoint to view food log and daily totals for a specific day."""
     user_id = session.get('user_id')
 
     if not user_id:
         return jsonify({'message': 'User not logged in.'}), 401
 
-    log_date = request.args.get('log_date', date.today())
+    log_date = request.args.get('log_date', date.today())  # Default to today's date
 
     daily_log = DailyFoodLog.query.filter_by(user_id=user_id, log_date=log_date).first()
 
     if not daily_log:
         return jsonify({'message': 'No log found for this date.'}), 404
 
+    # Retrieve entries for the day
     entries = []
     for entry in daily_log.food_entries:
         food_item = FoodItem.query.get(entry.food_id)
         entries.append({
             'food_name': food_item.food_name,
             'quantity': entry.quantity,
-            'calories': food_item.calories_per_serving * entry.quantity
+            'calories': food_item.calories_per_serving * entry.quantity,
+            'protein': food_item.protein_per_serving * entry.quantity,
+            'carbohydrates': food_item.carbohydrates_per_serving * entry.quantity,
+            'fat': food_item.fat_per_serving * entry.quantity
         })
 
     return jsonify({
         'date': log_date,
+        'total_calories': daily_log.total_calories,
+        'total_protein': daily_log.total_protein,
+        'total_carbohydrates': daily_log.total_carbohydrates,
+        'total_fat': daily_log.total_fat,
         'entries': entries
     }), 200
 

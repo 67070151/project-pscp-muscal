@@ -107,7 +107,7 @@ def register_user():
     try:
         db.session.add(new_user)
         db.session.commit()
-        
+
         new_user_profile = UserProfile(user_id=new_user.user_id)
         db.session.add(new_user_profile)
         db.session.commit()
@@ -146,6 +146,49 @@ def dashboard():
         }), 200
 
     return jsonify({'message': 'User profile not found.'}), 404
+
+@app.route('/set_goal', methods=['POST'])
+def set_goal():
+    """Endpoint to set user dietary goals, ensuring protein, carb, and fat goals sum to 100 or less."""
+    user_id = session.get('user_id')
+
+    if not user_id:
+        return jsonify({'message': 'User not logged in.'}), 401
+
+    request_data = request.json
+    calorie_goal = request_data.get('calorie_goal')
+    protein_goal = request_data.get('protein_goal')
+    carbohydrate_goal = request_data.get('carbohydrate_goal')
+    fat_goal = request_data.get('fat_goal')
+
+    # Retrieve current profile data
+    user_profile = UserProfile.query.filter_by(user_id=user_id).first()
+
+    if not user_profile:
+        return jsonify({'message': 'User profile not found.'}), 404
+
+    # Set current values as defaults if not provided
+    protein_goal = protein_goal if protein_goal is not None else user_profile.protein_goal
+    carbohydrate_goal = carbohydrate_goal if carbohydrate_goal is not None else user_profile.carbohydrate_goal
+    fat_goal = fat_goal if fat_goal is not None else user_profile.fat_goal
+
+    # Check that the sum of protein, carbs, and fats does not exceed 100
+    if protein_goal + carbohydrate_goal + fat_goal > 100:
+        return jsonify({'error': 'Sum of protein, carbohydrate, and fat goals cannot exceed 100.'}), 400
+
+    # Update goals if valid
+    if calorie_goal:
+        user_profile.calorie_goal = calorie_goal
+    user_profile.protein_goal = protein_goal
+    user_profile.carbohydrate_goal = carbohydrate_goal
+    user_profile.fat_goal = fat_goal
+
+    try:
+        db.session.commit()
+        return jsonify({'message': 'Goals updated successfully.'}), 200
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'error': str(e)}), 500
 
 @app.route('/view_all_food', methods=['GET'])
 def view_all_food():

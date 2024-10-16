@@ -134,24 +134,64 @@ def logout():
 
 @app.route('/dashboard', methods=['GET'])
 def dashboard():
-    """Dashboard endpoint to retrieve user profile information."""
+    """Dashboard endpoint to retrieve user profile information and progress for a specific date (default is today)."""
     user_id = session.get('user_id')
 
     if not user_id:
         return jsonify({'message': 'User not logged in.'}), 401
 
+    # Get the log_date from query params, default to today if not provided
+    log_date_str = request.args.get('log_date', None)
+    if log_date_str:
+        try:
+            log_date = date.fromisoformat(log_date_str)
+        except ValueError:
+            return jsonify({'error': 'Invalid date format. Use YYYY-MM-DD.'}), 400
+    else:
+        log_date = date.today()
+
+    # Retrieve the user's profile
     user_profile = UserProfile.query.filter_by(user_id=user_id).first()
+    if not user_profile:
+        return jsonify({'message': 'User profile not found.'}), 404
 
-    if user_profile:
-        return jsonify({
-            'user_id': user_profile.user_id,
-            'calorie_goal': user_profile.calorie_goal,
-            'protein_goal': user_profile.protein_goal,
-            'carbohydrate_goal': user_profile.carbohydrate_goal,
-            'fat_goal': user_profile.fat_goal
-        }), 200
+    # Retrieve the user's daily food log for the specified date
+    daily_log = DailyFoodLog.query.filter_by(user_id=user_id, log_date=log_date).first()
 
-    return jsonify({'message': 'User profile not found.'}), 404
+    # If no log exists for the date, return zeros for totals
+    if daily_log:
+        total_calories = daily_log.total_calories
+        total_protein = daily_log.total_protein
+        total_carbohydrates = daily_log.total_carbohydrates
+        total_fat = daily_log.total_fat
+    else:
+        total_calories = total_protein = total_carbohydrates = total_fat = 0
+
+    # Calculate progress towards daily goals
+    def calculate_progress(total, goal):
+        return (total / goal * 100) if goal > 0 else 0
+
+    calorie_progress = calculate_progress(total_calories, user_profile.calorie_goal)
+    protein_progress = calculate_progress(total_protein, user_profile.protein_goal)
+    carbohydrate_progress = calculate_progress(total_carbohydrates, user_profile.carbohydrate_goal)
+    fat_progress = calculate_progress(total_fat, user_profile.fat_goal)
+
+    return jsonify({
+        'user_id': user_profile.user_id,
+        'log_date': log_date.isoformat(),  # Include the log date in the response
+        'calorie_goal': user_profile.calorie_goal,
+        'protein_goal': user_profile.protein_goal,
+        'carbohydrate_goal': user_profile.carbohydrate_goal,
+        'fat_goal': user_profile.fat_goal,
+        'total_calories': total_calories,
+        'total_protein': total_protein,
+        'total_carbohydrates': total_carbohydrates,
+        'total_fat': total_fat,
+        'calorie_progress': calorie_progress,
+        'protein_progress': protein_progress,
+        'carbohydrate_progress': carbohydrate_progress,
+        'fat_progress': fat_progress
+    }), 200
 
 @app.route('/set_goal', methods=['POST'])
 def set_goal():

@@ -4,6 +4,15 @@ from models import *
 from werkzeug.security import generate_password_hash, check_password_hash
 from datetime import date
 from sqlalchemy.exc import IntegrityError
+from fastapi.middleware.cors import CORSMiddleware
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 def validate_user_input(data, required_fields):
     """Validate required user input fields."""

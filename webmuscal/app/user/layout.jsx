@@ -33,12 +33,11 @@ export default function RootLayout({ children }) {
     }
   },[pname])
   return (
-    <html lang="en">
-      <body>
+      <div className={`max-[1399px]:hidden min-[1791px]:hidden absolute`}>
         <div className=" flex items-center overflow-hidden w-screen h-screen bg-img11 bg-cover bg-center bg-no-repeat">
             <div className=" h-screen z-10">
               <div className={`${prof} duration-500 ease-in-out mt-5 w-[300px] h-[350px] rounded-e-2xl flex flex-col gap-10 justify-center items-center`}>
-                <div className=" w-[200px] h-[200px] bg-white hover:scale-105 duration-500 ease-linear cursor-pointer rounded-full"></div>
+                <div className=" w-[200px] h-[200px] bg-profileuser bg-cover bg-center bg-no-repeat hover:scale-105 duration-500 ease-linear cursor-pointer rounded-full"></div>
                 <div className={`text-[#FFFFFF] font-inter-r ${name} duration-500 ease-in-out`}>Jacob Nig</div>
               </div>
               <div className={`${pro} p-5`}>
@@ -74,7 +73,6 @@ export default function RootLayout({ children }) {
             </div>
             {children}
         </div>
-      </body>
-    </html>
+      </div>
   );
 }

@@ -7,7 +7,7 @@ const Page=()=>{
     const {totalfat, setTotalfat,totalcarbohydrate, setTotalcarbohydrate,totalprotein, setTotalprotein,totalCalories,setTotalCalories,addcalories,addprotein,
     addcarbohydrate,addfat,setaddcalories,setaddprotein,setaddcarbohydrate,setaddfat,foodList,setFoodList
     ,foodName,setFoodName} = useContext(FoodContext);
-    const [van,setvan] = useState("translate-x-[250px]")
+    // const [van,setvan] = useState("translate-x-[250px]")
     const [cc,setcc] = useState("opacity-0 z-[-10]")
     const [bgc,setbgc] = useState("bg-[#FFFFFF] text-[#1A4472]")
 
@@ -22,7 +22,7 @@ const Page=()=>{
           };
           const calValue = parseInt(addcalories, 10);
           const proValue = parseInt(addprotein, 10);
-          const craValue = parseInt(addprotein, 10);
+          const craValue = parseInt(addcarbohydrate, 10);
           const fatValue = parseInt(addfat, 10);
           setFoodList([...foodList, newFood]);
 
@@ -32,7 +32,7 @@ const Page=()=>{
           setTotalfat(totalfat + fatValue);
         
           console.log(foodList)
-
+        
           setaddcalories('');
           setaddprotein('');
           setaddcarbohydrate('');
@@ -41,10 +41,10 @@ const Page=()=>{
     return(
         <div className="w-screen h-screen flex flex-col gap-2 p-[20px]">
             <div className="font-krona-r text-[#E44545] text-[60px]">Add <span className="text-[#ffff]">Food</span></div>
-            <div className="flex items-center">
+            {/* <div className="flex items-center">
                 <input onFocus={(e)=>{(e)=setvan("translate-x-[450px]")}} onBlur={(e)=>{(e)=setvan("translate-x-[250px]")}} className="w-[300px] h-[70px] p-5 bg-bb1 rounded-2xl text-[20px] duration-300 ease-in-out focus:w-[500px] outline-none text-[#fff]" placeholder="Enter menu"/>
                 <div className={`${van} hover:scale-105 duration-300 ease-in-out absolute bg-van bg-cover bg-center w-[36px] h-[36px]`}></div>
-            </div>
+            </div> */}
             <div onClick={(e)=>(e)=(setcc(ee => ee === "opacity-0 z-[-10]" ? "opacity-1": "opacity-0 z-[-10]"),setbgc(ee => ee === "bg-[#FFFFFF] text-[#1A4472]" ? "bg-bb3 text-[#ffff]": "bg-[#FFFFFF] text-[#1A4472]"))} className={`w-[250px] h-[65px] ${bgc} cursor-pointer p-5 mt-3 hover:text-[#ffff] hover:bg-bb3 rounded-2xl flex justify-center items-center`}>
                 <div className="text-[25px] font-inter-r">Create meal</div>
             </div>

@@ -59,7 +59,7 @@ const Page=()=>{
                 </form>
             </div>
             <div className={`${box} w-[45vw] gap-5 h-[80vh] translate-y-[90px] translate-x-[200px] duration-300 ease-in-out bg-bb opacity-95 absolute rounded-3xl flex flex-col p-10`}>
-                <form onSubmit={(e)=>(e.preventDefault())}>
+                <form onSubmit={(e)=>(e.preventDefault(),setbox('hidden'))}>
                     <div className="flex flex-col">
                         <div className="text-[#ffff] text-[40px]">Goal Calories</div>
                         <input type="number" onChange={(e)=>(setcalories(e.target.value))} min={0} max={50000} placeholder="Goal Calories 0-50,000 Cal." className=" text-[#fff] placeholder:text-[#ffff] ml-8 w-[500px] h-[60px] bg-[#A6A6A6] text-[20px] outline-none rounded-2xl p-5"/>
@@ -76,7 +76,9 @@ const Page=()=>{
                         <div className="text-[#ffff] text-[40px]">Goal Fat</div>
                         <input type="number" onChange={(e)=>(setfat(e.target.value))}  min={0} max={50000} placeholder="Goal Fat 0-60 G." className="text-[#fff] placeholder:text-[#ffff] ml-8 w-[500px] h-[60px] bg-[#A6A6A6]  text-[20px] outline-none rounded-2xl p-5"/>
                     </div>
-                    <input type="submit" className=" hidden"></input>
+                    <div className="flex justify-center items-center w-[100%] mt-[40px]">
+                        <button type="submit" className="text-[#ffff] text-[30px]">Edit Goal</button>
+                    </div>
                 </form>
             </div>
         </div>

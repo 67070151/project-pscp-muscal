@@ -4,6 +4,7 @@ import React, { createContext, useState,useEffect } from 'react';
 const FoodContext = createContext();
 
 export const FoodProvider = ({ children }) => {
+  const parname = usePathname()
 
   const [totalCalories, setTotalCalories] = useState(0);
   const [totalprotein, setTotalprotein] = useState(0);
@@ -306,14 +307,12 @@ export const FoodProvider = ({ children }) => {
     db();
     foodV();
     vfoodlog();
-},[]);
-
-  useEffect(()=>{
-    const nnn = localStorage.getItem("position")
-    if(nnn){
-      setname2(nnn)
+    const nnn = localStorage.getItem("position");
+    if (nnn) {
+      setname2(nnn);
     }
-  },[name2])
+  },[]);
+  
 
   return (
     <FoodContext.Provider value={{
